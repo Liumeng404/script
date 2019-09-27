@@ -1,0 +1,29 @@
+from requests_html import HTMLSession
+import re
+session = HTMLSession()
+
+r= session.get('https://www.zte.com.cn/china/')
+
+links = r.html.absolute_links
+
+#正则
+htmlReg = re.compile(r'[a-zA-Z]+://([^/]+)/.*')
+
+listDomain = []
+a = 0
+b = 1
+for i in links:
+    b = b + 1
+    mo = htmlReg.search(i)
+    if mo:
+        if mo.group(1)  !=   "www.zte.com.cn":
+            print(mo.group(0))
+            listDomain.append(mo.group(1))
+            a = a +1
+
+c = a / b
+
+print("指向站外的链接一共：{}".format(a))
+print("一共有：{}".format(b))
+print("比率为：{}".format(c))
+
