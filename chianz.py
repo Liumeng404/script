@@ -2,6 +2,15 @@ import lxml.html as lh
 
 import downLoader
 import time
+import pymysql
+
+con = pymysql.connect(host='101.32.182.177',
+                      port=3306,
+                      user='liumeng',
+                      passwd='lm@3199803',
+                      db='workdb',
+                      charset='utf8')
+cursor = con.cursor()
 
 
 def getPages(html):
@@ -27,14 +36,15 @@ def get_keyword(pages):
             "//a[contains(@class,'ellipsis') and contains(@class,'block')]/text()"
         )
         kw_total_list.extend(kw_list)
-        time.sleep(500)
+        time.sleep(1)
     return kw_total_list
 
 
 def get_domian():
     domain_list = []
-    with open("domain.txt", 'w') as f:
-        domain_list.append(f.readline())
+    with open("E:\\python_学习代码\\script\\domain.txt", mode="r") as f:
+        result = f.readline()
+        domain_list.append(result)
     return domain_list
 
 
@@ -43,6 +53,11 @@ if __name__ == "__main__":
     compete_domain = get_domian()
     for domain in compete_domain:
         domain_url = base_url + f"{domain}/"
-        orgine_html = downLoader.downLoader(domain_url, debug=True)
+        status, orgine_html, red = downLoader.downLoader(domain_url,
+                                                         debug=True)
         pages = getPages(orgine_html)
         domain_kw_list = get_keyword(pages)
+        sql = "insert into competerkw(domain, keyword) values( f'{domain}',f'{kw}');"
+        for kw in domain_kw_list:
+            cursor.execute(sql)
+            print(f"{domain} :{kw}")
