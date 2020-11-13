@@ -4,6 +4,8 @@ import traceback
 import json
 import re
 import pymysql
+import os
+import csv
 
 # to do : 解决当查询值为空时，跳过该词或者其他得方式
 
@@ -56,44 +58,42 @@ def post_json(url, kw):
 
 
 def parse_news_data(news_json):
-    if news_json:
-        try:
-            news_dict = json.loads(news_json)
-            if news_dict['next_item'] != 0:
-                serp_list = []
-                for item in news_dict['items']:
-                    serp = {}
-                    serp['title'] = get_format_html(item['title'])
-                    serp['desc'] = get_format_html(item['content'])
-                    serp_list.append(serp)
-                return serp_list
-            else:
-                return None
-        except:
-            print("读取失败")
-            traceback.print_exc()
+    try:
+        news_dict = json.loads(news_json)
+        if news_dict['next_item'] != 0:
+            serp_list = []
+            for item in news_dict['items']:
+                serp = {}
+                serp['title'] = get_format_html(item['title'])
+                serp['desc'] = get_format_html(item['content'])
+                serp_list.append(serp)
+            return serp_list
+        else:
             return None
+    except:
+        print("读取失败")
+        traceback.print_exc()
+        return None
 
 
 def parse_article_data(article_json):
-    if article_json:
-        try:
-            news_dict = json.loads(article_json)
-            if news_dict['recordCount'] != 0:
-                serp_list = []
-                for item in news_dict['items']:
-                    serp = {}
-                    serp['title'] = get_format_html(item['title'])
-                    serp['author'] = get_format_html(item['author'])
-                    serp['pubulish_year'] = get_format_html(item['year'])
-                    serp_list.append(serp)
-                return serp_list
-            else:
-                return None
-        except:
-            print("读取失败")
-            traceback.print_exc()
+    try:
+        news_dict = json.loads(article_json)
+        if news_dict['recordCount'] != 0:
+            serp_list = []
+            for item in news_dict['items']:
+                serp = {}
+                serp['title'] = get_format_html(item['title'])
+                serp['author'] = get_format_html(item['author'])
+                serp['pubulish_year'] = get_format_html(item['year'])
+                serp_list.append(serp)
+            return serp_list
+        else:
             return None
+    except:
+        print("读取失败")
+        traceback.print_exc()
+        return None
 
 
 def insert_db(sql):
@@ -108,45 +108,78 @@ def insert_db(sql):
         return False
 
 
-def combain_info(kw):
-    '''获取新闻得信息'''
-    base_news_url = f"https://www.zte.com.cn/china/search?keyword={kw}&d=ws&searchword={kw}&pageIndex=1&startIndex=0&cateId=1_5_1"
-    kw_news_json = request_json(base_news_url)
-    kw_news_list = parse_news_data(kw_news_json)
-    for item in kw_news_list:
-        news_title = item['title']
-        news_desc = item['desc']
-        news_sql = f"insert into word_news(word,news_title,news_des)values('{kw}','{news_title}','{news_desc}')"
-        insert_db(news_sql)
-        print(f"{kw}<<<<<<<{news_title}")
-    
-    '''获取简讯信息'''
-    base_tech_url = "https://www.zte.com.cn/china/about/magazine/zte-technologies/articles/?d=ws"
-    kw_tech_json = post_json(base_tech_url, kw)
-    kw_tech_list = parse_article_data(kw_tech_json)
-    for item in kw_tech_list:
-        tech_title = item['title']
-        tech_author = item['author']
-        tech_year = item['pubulish_year']
-        tech_sql = f"insert into word_tech(word,tech_title,tech_author,tech_publishyear) values('{kw}','{tech_title}','{tech_author}','{tech_year}')"
-        insert_db(tech_sql)
-        print(f"{kw}<<<<<<<{tech_title}")
+def insert_batch_db(sql, list):
+    try:
+        cursor.executemany(sql, list)
+        con.commit()
+        return True
+
+    except:
+        traceback.print_exc()
+        con.rollback()
+        return False
 
 
+def get_news_info(kw):
+    pass
 
-    '''获取非简讯信息'''
-    base_comm_url = "https://www.zte.com.cn/china/about/magazine/zte-communications/articles/?d=ws"
-    kw_comm_json = post_json(base_comm_url, kw)
-    kw_comm_list = parse_article_data(kw_comm_json)
-    for item in kw_comm_list:
-        comm_title = item['title']
-        comm_author = item['author']
-        comm_year = item['pubulish_year']
-        comm_sql = f"insert into word_comm(word,comm_title,comm_author,comm_publishyear) values('{kw}','{comm_title}','{comm_author}','{comm_year}')"
-        insert_db(comm_sql)
-        print(f"{kw}<<<<<<<{comm_title}")
 
-    print("导入完毕")
+def combain_info(kw_list):
+
+    for kw in kw_list:
+        '''获取新闻得信息'''
+        base_news_url = f"https://www.zte.com.cn/china/search?keyword={kw}&d=ws&searchword={kw}&pageIndex=1&startIndex=0&cateId=1_5_1"
+        kw_news_json = request_json(base_news_url)
+        kw_news_list = parse_news_data(kw_news_json)
+        if kw_news_list:
+            for item in kw_news_list:
+                news_title = item['title']
+                news_desc = item['desc']
+                news_sql = f"insert into word_news(word,news_title,news_des)values('{kw}','{news_title}','{news_desc}')"
+                insert_db(news_sql)
+                if insert_db(news_sql):
+                    print(f"{kw}<<<<<<<{news_title} 插入成功")
+                else:
+                    print(f"{kw}<<<<<<<{news_title} 插入失败")
+        else:
+            continue
+        '''获取简讯信息'''
+        base_tech_url = "https://www.zte.com.cn/china/about/magazine/zte-technologies/articles/?d=ws"
+        kw_tech_json = post_json(base_tech_url, kw)
+        kw_tech_list = parse_article_data(kw_tech_json)
+        if kw_tech_list:
+            for item in kw_tech_list:
+                tech_title = item['title']
+                tech_author = item['author']
+                tech_year = item['pubulish_year']
+                tech_sql = f"insert into word_tech(word,tech_title,tech_author,tech_publishyear) values('{kw}','{tech_title}','{tech_author}','{tech_year}')"
+                insert_db(tech_sql)
+                if insert_db(tech_sql):
+                    print(f"{kw}<<<<<<<{tech_title} 插入成功")
+                else:
+                    print(f"{kw}<<<<<<<{tech_title} 插入失败")
+        else:
+            continue
+        '''获取非简讯信息'''
+        base_comm_url = "https://www.zte.com.cn/china/about/magazine/zte-communications/articles/?d=ws"
+        kw_comm_json = post_json(base_comm_url, kw)
+        kw_comm_list = parse_article_data(kw_comm_json)
+        if kw_comm_list:
+            for item in kw_comm_list:
+                comm_title = item['title']
+                comm_author = item['author']
+                comm_year = item['pubulish_year']
+                comm_sql = f"insert into word_comm(word,comm_title,comm_author,comm_publishyear) values('{kw}','{comm_title}','{comm_author}','{comm_year}')"
+                insert_db(comm_sql)
+                if insert_db(comm_sql):
+                    print(f"{kw}<<<<<<<{comm_title} 插入成功")
+                else:
+                    print(f"{kw}<<<<<<<{comm_title} 插入失败")
+        else:
+            continue
+
+        print("结束")
+
 
 def get_kw():
     with open("kws.txt", "r", encoding="utf8") as f:
@@ -157,8 +190,16 @@ def get_kw():
             print("插入中")
 
 
+def open_kw():
+    file_path = os.path.dirname(os.path.realpath(__file__))
+    myfile_path = os.path.join(file_path, '5g.csv')
+    with open(myfile_path, 'rt', encoding='utf8') as csv_file:
+        rd = csv.reader(csv_file)
+        kw_list = ['5g' + kw[0] for kw in rd]
+        return kw_list
+
+
 if __name__ == "__main__":
-    with open("kws.txt", "r", encoding="utf8") as f:
-        for line in f.readlines():
-            kw = line.strip("\n")
-            combain_info(kw)
+    keyword_list = open_kw()
+    combain_info(keyword_list)
+
