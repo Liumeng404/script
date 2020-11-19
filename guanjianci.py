@@ -1,28 +1,25 @@
 import jieba
 import traceback
 import pandas as pd
-import requests
 from aip import AipNlp
 import ast
 import time
-
+import csv
 
 # def baidu_nlp():
 #     api_key = "SZGMoWG2MKNgW3GClgqWPKlw"
 #     secret_key = "voAjVVKlHijMtX5lVKb8jxzYhNyQGQol"
 #     host = f'https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}'
 
-
 #     response = requests.get(host)
 #     if response:
 #         result = response.json()
 #         access_token = result["access_token"]
-        
+
 #     return access_token
 
 
 def get_baidu_result(text_1, text_2):
-
     """ 你的 APPID AK SK """
     APP_ID = '23006256'
     API_KEY = 'SZGMoWG2MKNgW3GClgqWPKlw'
@@ -33,32 +30,42 @@ def get_baidu_result(text_1, text_2):
     text1 = text_1
 
     text2 = text_2
-
     """ 调用短文本相似度 """
     result = client.simnet(text1, text2)
     return result["score"]
+
 
 def getmainword():
     with open(r"C:\Users\X250\Desktop\5g长尾词\关键词.txt", "r") as f_word:
         return [word.strip("\n") for word in f_word.readlines()]
 
+
 def get_list_dict():
-    with open(r"E:\python_学习代码\5g\结果.txt", "r") as f:
+    with open(r"C:\Users\X250\Desktop\结果.txt", "r") as f:
         result = f.readline()
         result_list = ast.literal_eval(result)
         return result_list
 
-# 死循环
+
 def get_words(word_list):
-    for item in word_list[:1]:
+    save_words = []
+    for item in word_list:
         for key, value in item.items():
             length = len(value)
-            print(length)
-            # for i in range(len(value)):
-            #     for j in range(0, len(value)-i-1):
-            #         simiar = get_baidu_result(value[j], value[j+1])
-            #         print(f"关键词: {value[j]} \n 关键词：{value[j+1]} \n 相似度：{simiar} \n =========")
-            #         time.sleep(1)
+            keep_word_dict = {}
+            keep_word = []
+            for i in range(length - 1):
+                simiar = get_baidu_result(value[i], value[i + 1])
+                print(
+                    f"关键词: {value[i]} \n 关键词：{value[i+1]} \n 相似度：{simiar} \n ========="
+                )
+                if simiar < 0.9:
+                    keep_word.append(value[i + 1])
+                time.sleep(1)
+            keep_word_dict[key] = keep_word
+
+    save_words.append(keep_word_dict)
+
 
 def qieci(kw_list):
     word_dict_list = []
@@ -73,9 +80,9 @@ def qieci(kw_list):
     return word_dict_list
 
 
-def save_to_txt(my_list):
+def save_to_txt(my_list, base_path):
     try:
-        with open(r"C:\Users\X250\Desktop\5g长尾词\结果.txt", "w") as f:
+        with open(base_path, "w") as f:
             f.write(str(my_list))
             print("结束")
     except:
@@ -88,7 +95,6 @@ def find_and_opencsv(filename_list):
         word_dict = {}
         try:
             col = ["关键词", "搜索结果", "PC日检索量(VIP特权数据)", "移动日检索量(VIP特权数据)"]
-            col_a = ["PC日检索量(VIP特权数据)", "移动日检索量(VIP特权数据)"]
             file = pd.read_csv(rf"C:\Users\X250\Desktop\5g长尾词\{filename}.csv",
                                sep=',',
                                encoding="gb2312",
@@ -106,10 +112,30 @@ def find_and_opencsv(filename_list):
     return keyword_list
 
 
+def save_to_csv(your_list):
+    filepath = r"C:\Users\X250\Desktop\最终要的数据.csv"
+    try:
+        with open(filepath, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(["主词", "长尾词"])
+            for item in w_list:
+                for key, value in item.items():
+                    for value_item in value:
+                        writer.writerow([key, value_item])
+                        print(f">>>> {key},{value_item}")
+        print("保持完毕")
+    except:
+        traceback.print_exc()
+        print("保存失败")
+
+
 if __name__ == "__main__":
     # word_list = getmainword()
     # file_list = qieci(word_list)
     # m_list = find_and_opencsv(file_list)
     # save_to_txt(m_list)
     w_list = get_list_dict()
-    get_words(w_list)
+    my_list = get_words(w_list)
+    # path = r"C:\Users\X250\Desktop\temp_word.txt"
+    save_to_csv(my_list)
+    # save_to_txt(str(my_list), path)
