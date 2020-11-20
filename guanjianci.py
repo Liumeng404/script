@@ -5,6 +5,7 @@ from aip import AipNlp
 import ast
 import time
 import csv
+import re
 
 # def baidu_nlp():
 #     api_key = "SZGMoWG2MKNgW3GClgqWPKlw"
@@ -129,13 +130,55 @@ def save_to_csv(your_list):
         print("保存失败")
 
 
+def cut_csv():
+    pdf = pd.read_csv(r"C:\Users\X250\Desktop\最终要的数据.csv",
+                      sep=",",
+                      encoding="gbk")
+    need_data = pdf["长尾词"]
+    jieba.load_userdict("keyword.txt")
+    stop_word = "的|得|地|了|嗨|好| |带|来|上|下|与|和|需|兆驰|有|谁|在|用|睿因|能|毒蝰|对|带来|吗|什么|给|需要|节|及|是|吧|向|各|死|之|跟|差|将|慢|收|由|年|恩施|华为|爱立信|诺基亚|德电|高通|阿里|苹果|小米|美国|英国|三星|骁龙|联发科|oppo|r9|斐讯|"
+    keep_word = []
+    for every_word in need_data:
+        cuted_every_word = jieba.lcut(every_word)
+        processed_every_word = [
+            x for x in cuted_every_word if x not in stop_word
+        ]
+        keep_word.append(processed_every_word)
+    pdf["切词"] = keep_word
+    pdf.to_csv(r"C:\Users\X250\Desktop\最重要的数据4.csv",
+               index=False,
+               encoding="utf-8")
+    print("done")
+
+
+def cut_title():
+    pdf = pd.read_csv(r"C:\Users\X250\Desktop\get_5g.csv", sep=",")
+    need_data = pdf["title"]
+    jieba.load_userdict("keyword.txt")
+    keep_word = []
+    for every_word in need_data:
+        try:
+            cuted_every_word = jieba.lcut(every_word)
+        except:
+            cuted_every_word = ""
+        keep_word.append(cuted_every_word)
+
+    pdf["切词"] = keep_word
+    pdf.to_csv(r"C:\Users\X250\Desktop\get_5g_1.csv",
+               index=False,
+               encoding="utf-8")
+    print("done")
+
+
 if __name__ == "__main__":
     # word_list = getmainword()
     # file_list = qieci(word_list)
     # m_list = find_and_opencsv(file_list)
     # save_to_txt(m_list)
-    w_list = get_list_dict()
-    my_list = get_words(w_list)
-    # path = r"C:\Users\X250\Desktop\temp_word.txt"
-    save_to_csv(my_list)
-    # save_to_txt(str(my_list), path)
+    # w_list = get_list_dict()
+    # my_list = get_words(w_list)
+    # # path = r"C:\Users\X250\Desktop\temp_word.txt"
+    # save_to_csv(my_list)
+    # # save_to_txt(str(my_list), path)
+
+    cut_title()
